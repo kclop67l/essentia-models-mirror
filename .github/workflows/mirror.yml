@@ -10,14 +10,17 @@ jobs:
 
       - name: Download all models
         run: |
-          wget -r -np -nH --cut-dirs=1 \
+          wget -r -np -nH \
                -A "*.pb,*.json" -R "index.html*" \
                --retry-connrefused --waitretry=3 --timeout=30 \
                https://essentia.upf.edu/models/
+          ls -la models/
 
       - name: Pack and split (~1.5GB per chunk)
         run: |
+          set -o pipefail
           tar czf - models | split -b 1500m - models.tar.gz.
+          ls -lh models.tar.gz.*
 
       - name: Upload to Release
         env:
