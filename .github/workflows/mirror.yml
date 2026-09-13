@@ -1,0 +1,29 @@
+name: mirror-essentia-models
+on:
+  workflow_dispatch:
+
+jobs:
+  download-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all models
+        run: |
+          wget -r -np -nH --cut-dirs=1 \
+               -A "*.pb,*.json" -R "index.html*" \
+               --retry-connrefused --waitretry=3 --timeout=30 \
+               https://essentia.upf.edu/models/
+
+      - name: Pack and split (~1.5GB per chunk)
+        run: |
+          tar czf - models | split -b 1500m - models.tar.gz.
+
+      - name: Upload to Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "mirror-$(date +%Y%m%d)" \
+            models.tar.gz.* \
+            --title "Essentia models mirror" \
+            --notes "Mirrored from essentia.upf.edu/models. Weights: CC-BY-NC-SA 4.0 (MTG-UPF), Essentia: AGPL-3.0."
