@@ -1,0 +1,35 @@
+name: fetch-gdrive-models
+on:
+  workflow_dispatch:
+
+jobs:
+  download-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download from Google Drive
+        run: |
+          pip install gdown
+          # 链接里 /d/ 后面那串就是文件 ID
+          gdown 1BFABsJRUVgJS5UE5iuM03dbfBjmI9LT5 -O fxencoder.bin
+          gdown 1Qu8rD7HpTNA1gJUVp2IuaeU_Nue8-VA3 -O mixfxcloner.bin
+          ls -lh fxencoder.bin mixfxcloner.bin
+          # 完整性初检: 文件必须大于 1MB (防止下到错误页 HTML)
+          [ $(stat -c%s fxencoder.bin) -gt 1048576 ]
+          [ $(stat -c%s mixfxcloner.bin) -gt 1048576 ]
+
+      - name: Pack and split
+        run: |
+          set -o pipefail
+          tar czf models.tar.gz fxencoder.bin mixfxcloner.bin
+          split -b 1500m models.tar.gz models.tar.gz.
+          ls -lh models.tar.gz.*
+
+      - name: Upload to Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "gdrive-$(date +%Y%m%d)" models.tar.gz.* \
+            --title "FXencoder + MixFXcloner" \
+            --notes "Downloaded from Google Drive via gdown. Sources: FXencoder (Φp.s.), MixFXcloner."
